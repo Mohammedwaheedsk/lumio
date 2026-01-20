@@ -3,8 +3,14 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lumina">
     <title>Lumina | Premium Goal Tracker</title>
+    <link rel="icon" type="image/png" href="lumina_logo.png">
+    <link rel="apple-touch-icon" href="lumina_logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -303,6 +309,35 @@
             font-weight: 600;
         }
 
+        /* Priority Badges */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-right: 8px;
+        }
+
+        .priority-high {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+
+        .priority-medium {
+            background: rgba(255, 165, 2, 0.2);
+            color: #ffa502;
+            border: 1px solid rgba(255, 165, 2, 0.3);
+        }
+
+        .priority-low {
+            background: rgba(46, 213, 115, 0.2);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+
         /* Modals */
         .modal {
             position: fixed;
@@ -567,6 +602,14 @@
                         <label>Deadline</label>
                         <input type="date" name="deadline" required>
                     </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select name="priority" required>
+                            <option value="high">High - Essential</option>
+                            <option value="medium" selected>Medium - Important</option>
+                            <option value="low">Low - Nice to have</option>
+                        </select>
+                    </div>
                     <button type="submit" class="btn-primary full-width">Create Goal</button>
                 </form>
             </div>
@@ -662,13 +705,14 @@
                 }
             }
 
-            function addGoal(name, target, deadline) {
+            function addGoal(name, target, deadline, priority) {
                 const newGoal = {
                     id: crypto.randomUUID(),
                     name,
                     target: Number(target),
                     saved: 0,
                     deadline,
+                    priority: priority || 'medium',
                     createdAt: new Date().toISOString()
                 };
                 state.goals.push(newGoal);
@@ -722,6 +766,14 @@
                     return;
                 }
 
+                // Sort: High Priority > Medium > Low > then by Deadline
+                state.goals.sort((a, b) => {
+                    const pMap = { high: 3, medium: 2, low: 1 };
+                    const diff = (pMap[b.priority] || 2) - (pMap[a.priority] || 2);
+                    if (diff !== 0) return diff;
+                    return new Date(a.deadline) - new Date(b.deadline);
+                });
+
                 state.goals.forEach(goal => {
                     const percent = Math.min(100, Math.round((goal.saved / goal.target) * 100));
                     const stats = calculateDailyMap(goal);
@@ -736,7 +788,10 @@
                     card.innerHTML = `
                         <div class="goal-header">
                   <div>
-                    <div class="goal-title">${goal.name}</div>
+                    <div class="goal-title">
+                        <span class="badge priority-${goal.priority || 'medium'}">${goal.priority || 'MED'}</span>
+                        ${goal.name}
+                    </div>
                     <div class="goal-deadline">Target: ₹${new Intl.NumberFormat('en-IN').format(goal.target)}</div>
                   </div>
                   <div class="goal-deadline">${new Date(goal.deadline).toLocaleDateString()}</div>
@@ -783,7 +838,7 @@
                 app.addGoalForm.onsubmit = (e) => {
                     e.preventDefault();
                     const fd = new FormData(app.addGoalForm);
-                    addGoal(fd.get('name'), fd.get('target'), fd.get('deadline'));
+                    addGoal(fd.get('name'), fd.get('target'), fd.get('deadline'), fd.get('priority'));
                     app.addGoalForm.reset();
                     closeModal(app.addGoalModal);
                 };
